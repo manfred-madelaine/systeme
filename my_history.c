@@ -1,4 +1,3 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -190,15 +189,15 @@ int my_touch(){
 		}
 
 		/*on crée le fichier*/
-		int history = open(commande[i], O_WRONLY|O_APPEND|O_CREAT,S_IWUSR|S_IRUSR);
+		int f = open(commande[i], O_WRONLY|O_APPEND|O_CREAT,S_IWUSR|S_IRUSR);
 
-		if(history!= -1)
-		close(history);
+		if(f!= -1)
+		close(f);
 		i++;
 	}
 
 	i=1;
-	/* si l'une des commandes est l'option -m*/
+	/* si l'une des arguments est l'option -m*/
 	if(checkM == 1){
 		while (commande[i] != NULL){
 

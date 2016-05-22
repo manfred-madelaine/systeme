@@ -34,7 +34,7 @@ void delet();
  *
  * Crée un fichier "history.txt" dans lequel il enregistre les lignes de commande
  */
-int my_history ();
+int my_history();
 
 /* Fonction: my_touch
  * Entrees: aucune

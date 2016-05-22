@@ -1,30 +1,13 @@
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <fcntl.h>
-#include <utime.h>
-#include <time.h>
-#include <sys/time.h>
-#include <sys/stat.h>
 
 #include "my_cat.h"
 #include "my_shell.h"
 
-/* Fonction: my_exit
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * Ex√©cute la commande "exit"
- */
-void my_exit(char** buffermult)
-{
-	exit(0);
-}
 
 /* Fonction: affiche_fichier
  * Entrees: fichier
@@ -33,9 +16,9 @@ void my_exit(char** buffermult)
  * Sortie: aucune
  *
  * Affiche le contenu d'un fichier
- * Si option_n vaut 1, la num√©rotation des lignes est activ√©e,
+ * Si option_n vaut 1, la numÈrotation des lignes est activÈe,
  * sinon elle ne l'est pas
- * G√®re le dernier retour chariot d'un fichier texte
+ * GËre le dernier retour chariot d'un fichier texte
  */
 void affiche_fichier(FILE* fichier, int option_n)
 {
@@ -48,9 +31,9 @@ void affiche_fichier(FILE* fichier, int option_n)
 	while( (caract = fgetc(fichier)) != EOF ) /* tant que la fin n'est pas atteinte */
 	{
 		if (caract != '\n') {
-			if (last_car == '\n') { /* en stockant le caract√®re pr√©c√©dent √† afficher */
-				printf("\n");		/* on peut diff√©r√© l'affichage du retour chariot */
-									/* cela permet de ne pas afficher celui ajout√© en fin de fichier */
+			if (last_car == '\n') { /* en stockant le caractËre prÈcÈdent ‡ afficher */
+				printf("\n");		/* on peut diffÈrÈ l'affichage du retour chariot */
+									/* cela permet de ne pas afficher celui ajoutÈ en fin de fichier */
 				if (option_n == 1)
 					printf("%d  ", l);
 				}
@@ -81,104 +64,55 @@ void affiche_fichier(FILE* fichier, int option_n)
  *
  *
  * 2 choix possibles :
- *     - cat FILE avec comme option -n qui num√©rote les lignes du fichier
- *     - cat FILE1 FILE2 qui affiche la concat√©nation des deux fichiers
- * Ouvre les fichiers n√©cessaires et appel d'affiche_fichier
+ *     - cat FILE avec comme option -n qui numÈrote les lignes du fichier
+ *     - cat FILE1 FILE2 qui affiche la concatÈnation des deux fichiers
+ * Ouvre les fichiers nÈcessaires et appel d'affiche_fichier
  */
-int my_cat(char* fichier1, char* fichier2){
-
-	if (fichier1 == NULL){
+void my_cat(char* fichier1, char* fichier2)
+{
+	if (fichier1 == NULL)
 		printf("Erreur, veuillez saisir un nom de fichier pour cette commande.\n");
-		return 1;
-	}
-
-	/* ouverture du fichier en mode lecture seule*/
-	FILE* f1  = fopen(fichier1, "r");
-
-	/* test d'ouverture*/
-	if (f1 == NULL){
-		printf("Erreur, ouverture du premier fichier impossible.\n");
-		return 1;
-	}
-
-	/* on regarde si l'option -n est demand√©e*/
-	int option_n = 0;
-	if (fichier2 != NULL){
-
-		if (strcmp(fichier2, "-n") == 0)
-			option_n = 1;
-
-		/* affichage du fichier 1*/
-		affiche_fichier(f1, option_n);
-
-		if (option_n != 1)	/* cas 2 (cat FILE1 FILE2)*/
+	else if (strcmp(fichier1, "-n") == 0)
+			printf("Erreur, veuillez rentrer un nom de fichier avant l'option -n\n");
+	else 
+	{
+		// dÈclaration du fichier
+		FILE* f1 = NULL;
+	
+		// ouverture du fichier en mode lecture seule
+		f1 = fopen(fichier1, "r");
+		
+		// test d'ouverture
+		if (f1 == NULL)
+			printf("Erreur, ouverture du premier fichier impossible.\n");
+			
+		else // ouverture fichier 1 ok
 		{
-			FILE* f2 = fopen(fichier2, "r");
-
-			if (f2 == NULL){
-				printf("Erreur, ouverture du second fichier impossible.\n");
-				return 1;
-			}
-
-			affiche_fichier(f2, 0); /* 0 pour d√©sactiver l'option -n*/
-
-			fclose(f2);
+			// on regarde si l'option -n est demandÈe
+			int option_n = 0;
+			if (fichier2 != NULL) // il faut d'abord vÈrifier que la chaÓne existe
+				if (strcmp(fichier2, "-n") == 0)
+					option_n = 1;
+				
+			// affichage du fichier 1
+			affiche_fichier(f1, option_n);
+				
+			if (fichier2 != NULL)
+				if (strcmp(fichier2, "-n") != 0)	// cas 2 (cat FILE1 FILE2)
+				{
+					FILE* f2 = fopen(fichier2, "r");
+					if (f2 == NULL)
+						printf("Erreur, ouverture du second fichier impossible.\n");
+						
+					else 
+						affiche_fichier(f2, 0); // 0 pour dÈsactiver l'option -n
+					
+					fclose(f2);
+				}	
 		}
+		fclose(f1);
 	}
-
-	fclose(f1);
-	return 0;
 }
 
 
-/* Retourne le chemin d'une commande pass√©e en param√®tres
- * 					(chaine de caract√®res)
- * Retourne echec si le chemin n'est pas trouv√©
- */
-char* get_path(char* cmd_name) {
 
-	//ajout d'un / √† la commande
-	char command_name[40];
-	strcpy(command_name, "/");
-	strcat(command_name, cmd_name);
-
-	char* buffer[1024];
-	char* cmd_path = getenv("PATH");
-	char* paths[100];
-	char* temp;
-	int i = 0;
-	int break_ = 0;
-
-	// strtok permet de parser le chemin de la commande suivant un d√©limiteur
-	paths[i] = strtok(cmd_path, ":"); // 1er appel en dehors de la boucle
-
-	// on free et on r√©alloue de la place pour temp √† chaque boucle
-	temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
-	strcpy(temp, paths[i]); // copie du chemin dans temp
-	strcat(temp, command_name); // concat√©nation des deux cha√Ænes
-
-	while(1){
-		free(temp);
-		i++;
-		paths[i] = strtok(NULL, ":");
-		if (paths[i] == NULL){
-		// si on arrive √† la fin, il faut sortir du while
-			printf("Erreur, commande introuvable.\n");
-			break_ = 1;
-			break;
-		}
-
-		// m√™me chose qu'avant la boucle
-		temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
-		strcpy(temp, paths[i]);
-		strcat(temp, command_name);
-
-		if (stat(temp, &buffer) == 0 ){
-			//a path with this file name is found. Use it.
-			return temp;
-		}
-	}
-	if (break_ == 0)
-		free(temp);
-	return "echec";
-}

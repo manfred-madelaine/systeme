@@ -6,14 +6,12 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
-#include <utime.h>
-#include <time.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 
 #include "my_shell.h"
 #include "my_history.h"
 #include "my_cat.h"
+#include "my_copy.h"
 
 /* Fonction: invite_commande
  * Entrees: aucune
@@ -41,36 +39,49 @@ void invite_commande(char* nomRepertoire, char* nomMachine, char* nomUtilisateur
 void parse()
 {
 	int i = 0;
-	int done = 0; /* nombre de caractères de ligne déjà traités */
-	int arg = 0; /* faut-il remplir le tableau des arguments? */
+	int done = 0; /* nombre de caractères de ligne déjà traités*/
+	int arg = 0;
 	while(i < strlen(ligne))
 	{
-		while((ligne[i] == ' ') && (ligne[i] != '\0')) /* on élimine les espaces */
+		while((ligne[i] == ' ') && (ligne[i] != '\0')) /* on élimine les espaces*/
 		{
 			i++;
 			done++;
 		}
-
-		i = done; /* on remet i à la bonne valeur (caractères déjà traités) */
-
+		
+		i = done; /* on remet i à la bonne valeur (caractères déjà traités)*/
+		
 		commande[arg] = malloc(MAX_TAILLE_ARGUMENTS * sizeof(char));
 		while((ligne[i] != ' ') && (ligne[i] != '\0'))
 		{
-			if (ligne[i] == '\n'){i++;continue;}
 			commande[arg][i-done] = ligne[i];
 			i++;
 		}
-
+		
 		commande[arg][i-done] = '\0';
-
-	    while((ligne[i] == ' ') && (ligne[i] != '\0')) /* on élimine les espaces */
+			
+	    while((ligne[i] == ' ') && (ligne[i] != '\0')) /* on élimine les espaces*/
 		{
 			i++;
 			done++;
 		}
-
+			
 		done = i;
 		arg++;
+	}
+	
+	/* une fois commande[][] initialisé, on va supprimer l'espace entre le ">" 
+	 * et le nom de fichier associé le cas échéant*/
+	i = 0;
+	while (commande[i] != NULL)
+		i++;  /* recherche du nombre d'arguments*/
+	
+	if (i > 1) {
+		if (strcmp(commande[i-2], ">") == 0) { /* avant-dernier argument*/
+			strcat(commande[i-2], commande[i-1]); /* on met le dernier argumet derriere le ">" */
+			free(commande[i-1]); /* suppression du dernier élément*/
+			commande[i-1] = NULL;
+		}
 	}
 }
 
@@ -106,109 +117,59 @@ void my_exit(char** buffermult)
 	exit(0);
 }
 
-/* Fonction: affiche_fichier
- * Entrees: fichier
- * 			option d'affichage
- *
- * Sortie: aucune
- *
- * Affiche le contenu d'un fichier
- * Si option_n vaut 1, la numérotation des lignes est activée,
- * sinon elle ne l'est pas
- * Gère le dernier retour chariot d'un fichier texte
+
+/* Retourne le chemin d'une commande passée en paramètres
+ * 					(chaine de caractères)
+ * Retourne echec si le chemin n'est pas trouvé
  */
-void affiche_fichier(FILE* fichier, int option_n)
-{
-	int caract = 0;
-	int last_car = 0;
-	int l = 1;
+char* get_path(char* cmd_name) {
 
-	if (option_n == 1)
-		printf("%d  ", l);
-	while( (caract = fgetc(fichier)) != EOF ) /* tant que la fin n'est pas atteinte */
-	{
-		if (caract != '\n') {
-			if (last_car == '\n') { /* en stockant le caractère précédent à afficher */
-				printf("\n");		/* on peut différé l'affichage du retour chariot */
-									/* cela permet de ne pas afficher celui ajouté en fin de fichier */
-				if (option_n == 1)
-					printf("%d  ", l);
-				}
+	/*ajout d'un / à la commande*/
+	char command_name[40];
+	strcpy(command_name, "/");
+	strcat(command_name, cmd_name);
 
-			printf("%c", caract);
+	struct stat buffer[1024];
+	char* cmd_path = getenv("PATH");
+	char* paths[100];
+	char* temp;
+	int i = 0;
+	int break_ = 0;
+
+	/* strtok permet de parser le chemin de la commande suivant un délimiteur*/
+	paths[i] = strtok(cmd_path, ":"); /* 1er appel en dehors de la boucle*/
+
+	/* on free et on réalloue de la place pour temp à chaque boucle*/
+	temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
+	strcpy(temp, paths[i]); /* copie du chemin dans temp*/
+	strcat(temp, command_name); /* concaténation des deux chaînes*/
+
+	while(1){
+		free(temp);
+		i++;
+		paths[i] = strtok(NULL, ":");
+		if (paths[i] == NULL){
+		/* si on arrive à la fin, il faut sortir du while*/
+			printf("Erreur, commande introuvable.\n");
+			break_ = 1;
+			break;
 		}
-		else
-		{
-			if (last_car == '\n') {
-				printf("\n");
-				if (option_n == 1)
-					printf("%d  ", l);
-				}
-			l++;
+
+		/* même chose qu'avant la boucle*/
+		temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
+		strcpy(temp, paths[i]);
+		strcat(temp, command_name);
+
+		if (stat(temp, buffer) == 0 ){
+			/* on trouve un chemin avec le même nom*/
+			return temp;
 		}
-		last_car = caract;
 	}
-
-	if (last_car == '\n')
-		printf("\n");
+	if (break_ == 0)
+		free(temp);
+	return "echec";
 }
 
-/* Fonction: my_cat
- * Entrees: le premier fichier
- * 			le second fichier
- *
- * Sortie: 1 si une erreur s'est produite, 0 sinon
- *
- *
- * 2 choix possibles :
- *     - cat FILE avec comme option -n qui numérote les lignes du fichier
- *     - cat FILE1 FILE2 qui affiche la concaténation des deux fichiers
- * Ouvre les fichiers nécessaires et appel d'affiche_fichier
- */
-int my_cat(char* fichier1, char* fichier2){
-
-	if (fichier1 == NULL){
-		printf("Erreur, veuillez saisir un nom de fichier pour cette commande.\n");
-		return 1;
-	}
-
-	/* ouverture du fichier en mode lecture seule*/
-	FILE* f1  = fopen(fichier1, "r");
-
-	/* test d'ouverture*/
-	if (f1 == NULL){
-		printf("Erreur, ouverture du premier fichier impossible.\n");
-		return 1;
-	}
-
-	/* on regarde si l'option -n est demandée*/
-	int option_n = 0;
-	if (fichier2 != NULL){
-
-		if (strcmp(fichier2, "-n") == 0)
-			option_n = 1;
-
-		/* affichage du fichier 1*/
-		affiche_fichier(f1, option_n);
-
-		if (option_n != 1)	/* cas 2 (cat FILE1 FILE2)*/
-		{
-			FILE* f2 = fopen(fichier2, "r");
-
-			if (f2 == NULL){
-				printf("Erreur, ouverture du second fichier impossible.\n");
-				return 1;
-			}
-
-			affiche_fichier(f2, 0); /* 0 pour désactiver l'option -n*/
-
-			fclose(f2);
-		}
-	}
-
-	fclose(f1);
-	return 0;
-}
 
 /* Fonction: executer_commande
  * Entrees: aucune
@@ -217,291 +178,72 @@ int my_cat(char* fichier1, char* fichier2){
  *
  * Execute une commande
  */
-void executer_commande(){
+void executer_commande()
+{
 	pid_t pid;
-
-	/* on exécute les commandes internes*/
+	
+	/* on exécute les commandes internes (pas de fork)*/
 	if( strcmp(commande[0], "exit") == 0)
-		{my_exit(commande);}
-
+	    {my_exit(commande);}
+	    
 	else if(strcmp(commande[0], "cd") == 0)
-		{chdir(commande[1]);}
-
-	else if(strcmp(commande[0], "touch") == 0)
-		{my_touch();}
-
-	else if(strcmp(commande[0], "history") == 0)
-		{my_history();}
-
+	    {chdir(commande[1]);}
+	    
 	else if(strcmp(commande[0], "cat") == 0)
-		{my_cat(commande[1], commande[2]);}
-
+	    {my_cat(commande[1], commande[2]);}
+	    
+	else if(strcmp(commande[0], "history") == 0)
+	    {my_history();}
+	    
+	else if(strcmp(commande[0], "copy") == 0)
+	    {my_copy(commande[1], commande[2]);}   
+	    
 	else
 	{
-		pid = fork();
+		pid = fork(); /* le fork permet de lancer une commande en continuant d'executer le shell*/
 		if (pid == 0) /* fils*/
 		{
-			/* exécute les commandes externes*/
-            const char* path = get_path(commande[0]); /* on récupère le chemin*/
+			/*on commence par vérifier si on veut faire une redirection*/
+			int i = 0; /* recherche du nombre d'éléments*/
+			while (commande[i] != NULL)
+				i++; 
+		
+			if (commande[i-1][0] == '>') {
+				/* ouverture d'un fichier de destination*/
+				int file = open(&commande[i-1][1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
+						/* O_WRONLY : on va seulement écrire dans le fichier
+						 * O_CREAT : créé le fichier s'il n'existe pas
+						 * O_TRUNC : le fichier est tronqué à une longueur nulle s'il existe
+						 * 0666 : tout le monde peut lire et écrire dans ce fichier*/
+				
+				if (file == -1) {
+					printf("Erreur, impossible de créer le fichier");
+					exit(1);
+				}
+			
+				dup2(file, 1); /*remplace la sortie standard par un fichier de sortie*/
+				close(file);
+				
+				/*il faut supprimer le dernier argument pour effectuer la commande externe*/
+				commande[i-1] = NULL;
+			}
+			
+			/*on exécute ensuite les commandes externes*/
+			const char* path = get_path(commande[0]); /*on récupère le chemin*/
 			if (strcmp(path, "echec") != 0) { /* si on réussit à récupérer le path*/
 				execv(path, commande);
 			}
 			else
 				my_exit(commande);
+				
 		}
-
 		else if(pid<0)
 			printf("Erreur, fork a échoué.\n");
-
 		else /* père*/
 		{
 			int status;
-			waitpid(pid, &status, 0);
+			waitpid(pid, &status, 0); /* attente bloquante*/
 		}
 	}
 }
 
-
-int main(){
-
-	char nomRepertoire[MAX_CHAR_REP];
-	char nomUtilisateur[MAX_CHAR_UTI];
-	char nomMachine[MAX_CHAR_MACHINE];
-
-	if(getlogin_r(nomUtilisateur, MAX_CHAR_UTI*sizeof(char)) || gethostname(nomMachine, MAX_CHAR_MACHINE*sizeof(char)) == -1)
-		return EXIT_FAILURE;
-
-	*strchr(nomMachine, '.') = '\0';
-
-	int i;
-	while(1)
-	{
-		i = 0;
-
-		invite_commande(nomRepertoire, nomMachine, nomUtilisateur);
-		lire_commande();
-		executer_commande();
-
-		/* on libère l'espace en mémoire*/
-		while(commande[i] != NULL)
-		{
-			free(commande[i]);
-			commande[i] = NULL;
-			i++;
-		}
-	}
-
-	return 0;
-}
-
-
-/* Fonction: stockCommande
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * Crée un fichier "history.txt" dans lequel il enregistre les lignes de commande
- */
-void stockCommande(){
-	int i=0;
-
-	int history = open("history.txt", O_WRONLY|O_APPEND|O_CREAT,S_IWUSR|S_IRUSR);
-
-	if(history!= -1){
-		write(history,ligne,strlen(ligne));/*on copie la ligne dans l'historique*/
-		write(history,"\n",1);
-	}
-
-	close(history);
-}
-
-/* Fonction: delet
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * Supprimer le retour à la ligne dans une chaine de caractère
- */
-void delet(){
-	int i=0;
-
-	while (i < sizeof(ligne)){
-		if (ligne[i] == '\n')
-			ligne[i] = ' ';
-		i++;
-	}
-}
-
-/* Fonction: my_history
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * plusieurs commandes possibles:
- * 		history 	:affiche l'historique
- * 		history n	:affiche les n dernières lignes de l'historique
- * 		history	!n	:exécute la nème ligne
- */
-int my_history (){
-
-	FILE* fichier = NULL;
-	int i=1, sizeh=0; /* sizeh = nombres de lignes du fichier "history.c" */
-
-	char chaine[MAX_CHAR_MACHINE] = "";
-
-    fichier = fopen("history.txt", "r");
-
-    /* si le fichier est vide on s'arrête*/
-	if (fichier == NULL)
-		{ return 1;}
-
-	/*si on a rentré un argument et que arg!= 0 (si arg=0 on affiche tout l'historique)*/
-	if(commande[1] != NULL && commande[1] != 0){
-
-		int val;
-		i=0;
-
-		if(commande[1][0] == '!'){
-
-			char txt[] = "";
-			/* on retire le "!" */
-			commande[1][0] = '0';
-
-
-			/*on convertit le char en int*/
-			val = atoi(commande[1]);
-
-			i=0;
-			/* on libère l'espace en mémoire*/
-			while(commande[i] != NULL)
-			{
-				free(commande[i]);
-				commande[i] = NULL;
-				i++;
-			}
-
-			i=1;
-
-			/* On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)*/
-			while (fgets(ligne, MAX_CHAR_MACHINE, fichier) != NULL)
-			{
-				/* Une fois arrivé à la "val"-ième ligne du fichier
-				 * on afficher et exécute la commande
-				 */
-				if(i == val){
-					/*on supprime le retour à la ligne*/
-					delet();
-
-					printf("ligne de commande: %s\n", ligne);
-
-					/*on exécute la commande et tout ce qui va avec*/
-					stockCommande();
-					parse();
-					executer_commande();
-					break;
-				}
-				i++;
-			}
-		}
-		else {
-			/* on converti l'argument en entier*/
-			val = atoi(commande[1]);
-			i=1;
-
-			/* On compte le nombre de lignes du fichier*/
-			while(fgets(chaine, MAX_CHAR_MACHINE, fichier) != NULL)
-				{sizeh++;}
-
-			fseek(fichier,0,SEEK_SET);//on se replace au début du fichier*/
-
-			/* On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)*/
-			while (fgets(chaine, MAX_CHAR_MACHINE, fichier) != NULL)
-			{
-				/* Une fois arrivé aux "val" dernières lignes du fichier
-				 *  on commence à afficher les commandes
-				 */
-				if(sizeh-i < val){
-					printf("%d\t%s", i, chaine);
-				}
-				i++;
-			}
-		}
-	}
-	/*Si il n'y a pas d'argument, on lit tout le fichier*/
-	else{
-		while (fgets(chaine, MAX_CHAR_MACHINE, fichier) != NULL) /* On lit le fichier tant qu'on ne reçoit pas d'erreur (NULL)*/
-		{
-			printf("%d\t%s", i, chaine); /* On affiche la chaîne qu'on vient de lire*/
-			i++;
-		}
-	}
-
-	fclose(fichier);
-	return 0;
-}
-
-/* Fonction: my_touch
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * plusieurs commandes possibles:
- *		touch fichier	: crée un fichier si il n'existe pas et modifie l'heure d'accès et de modification
- * 		touch f1 ... fn	: crée les n fichiers si ils n'existent pas et modifie l'heure d'accès et de modification
- *  	touch f1 fn -m	: idem que précédement sauf qu'il modifie uniquement l'heure de modification
- */
-int my_touch(){
-
-	/* si il n'y a pas d'argument on ne peut pas travailler sur le fichier */
-	if(commande[1] == NULL){
-		printf("touch: fichier innexistant\n");
-		return 1;
-	}
-
-	int i = 1, checkM = 0;
-
-	/* on parcours les arguments pour créer les fichiers et regarder
-	 * si l'une de ces commandes est la commande -m
-	 */
-	while (commande[i] != NULL){
-		/*  détection de l'option "-m" */
-		if( strcmp(commande[i],"-m") == 0 ){
-			checkM = 1;
-			i++;
-			continue;
-		}
-
-		/*on crée le fichier*/
-		int history = open(commande[i], O_WRONLY|O_APPEND|O_CREAT,S_IWUSR|S_IRUSR);
-
-		if(history!= -1)
-		close(history);
-		i++;
-	}
-
-	i=1;
-	/* si l'une des commandes est l'option -m*/
-	if(checkM == 1){
-		while (commande[i] != NULL){
-
-			struct stat temp;
-			struct utimbuf buf;
-
-			/*  détection de l'option "-m" */
-			if( strcmp(commande[i],"-m") == 0 ){
-				i++;
-				continue;
-			}
-
-			if( stat( commande[i], &temp) != 0)
-				return -1;
-
-			/* on récupère le temps courant */
-			buf.modtime = time(NULL);
-			buf.actime = temp.st_atime;
-			utime(commande[i] , &buf);
-			i++;
-		}
-	}
-	return 0;
-}

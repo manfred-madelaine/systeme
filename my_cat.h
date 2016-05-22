@@ -1,6 +1,6 @@
 /*  MY_CAT.H
  *
- * Contient les fonctions li√©es √† la commande cat
+ * Contient les fonctions liÈes ‡ la commande cat
  *
  */
 
@@ -9,15 +9,6 @@
 
 #include "my_shell.h"
 
-/* Fonction: my_exit
- * Entrees: aucune
- *
- * Sortie: aucune
- *
- * Ex√©cute la commande "exit"
- */
-void my_exit(char** buffermult);
-
 /* Fonction: affiche_fichier
  * Entrees: fichier
  * 			option d'affichage
@@ -25,9 +16,9 @@ void my_exit(char** buffermult);
  * Sortie: aucune
  *
  * Affiche le contenu d'un fichier
- * Si option_n vaut 1, la num√©rotation des lignes est activ√©e,
+ * Si option_n vaut 1, la numÈrotation des lignes est activÈe,
  * sinon elle ne l'est pas
- * G√®re le dernier retour chariot d'un fichier texte
+ * GËre le dernier retour chariot d'un fichier texte
  */
 void affiche_fichier(FILE* fichier, int option_n);
 
@@ -35,22 +26,15 @@ void affiche_fichier(FILE* fichier, int option_n);
  * Entrees: le premier fichier
  * 			le second fichier
  *
- * Sortie: 1 si une erreur s'est produite, 0 sinon
+ * Sortie: aucune
  *
  *
  * 2 choix possibles :
- *     - cat FILE avec comme option -n qui num√©rote les lignes du fichier
- *     - cat FILE1 FILE2 qui affiche la concat√©nation des deux fichiers
- * Ouvre les fichiers n√©cessaires et appel d'affiche_fichier
+ *     - cat FILE avec comme option -n qui numÈrote les lignes du fichier
+ *     - cat FILE1 FILE2 qui affiche la concatÈnation des deux fichiers
+ * Ouvre les fichiers nÈcessaires et appel d'affiche_fichier
  */
-int my_cat(char* fichier1, char* fichier2);
+void my_cat(char* fichier1, char* fichier2);
 
-/* Fonction: get_path
- * Entrees: le nom d'une commande
- *
- * Sortie: "echec" si lle chamin n'a pas pu √™tre trouv√© sinon, retourne une chaine de caract√®re
- *
- * retourne le chemin d'une commande pass√©e en param√®tres
- */
-char* get_path(char* cmd_name);
 #endif
+

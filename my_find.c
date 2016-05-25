@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <dirent.h> 
 #include <string.h> 
+#include <unistd.h>
 
 #include "my_find.h"
 
@@ -9,9 +10,9 @@ char* current_path;
 
 void my_find(int first_call)
 {
-
   	if(first_call == 0){ /* cas d'un premier appel à la fonction */
-		
+		free(current_path);
+		current_path = NULL;
 		/* récupération du répertoire de départ */
 		char start_path[MAX_PATH];
 		getcwd(start_path, MAX_PATH);
@@ -37,7 +38,6 @@ void my_find(int first_call)
     while (1) {
 		
         struct dirent* ent;
-        char * name;
         if ( (ent = readdir(dir)) == NULL) {
             break;
         }
@@ -45,8 +45,6 @@ void my_find(int first_call)
 		if (ent->d_type & DT_DIR) { /* si c'est un répertoire */
 
 			if ((strcmp (ent->d_name, "..") != 0) && (strcmp (ent->d_name, ".") != 0)) {
-				   
-				char path[MAX_PATH];
 				
 				/* ajout d'un / puis du nom du prochain fichier/repertoire */
 				strcat(current_path, "/");
@@ -76,3 +74,4 @@ void my_find(int first_call)
     }
 	closedir (dir);
 }
+

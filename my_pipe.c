@@ -1,5 +1,14 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <utime.h>
+#include <time.h>
+#include <sys/time.h>
+#include <sys/stat.h>
 
 #include "my_pipe.h"
 
@@ -43,7 +52,6 @@ int my_pipe(int nb_pipes) {
     }
 
     int k = 1;
-    int place;
     int start_of_commande[10]; /* Donne la position de départ de chaque commande dans le tableau "commande[][]" */
     start_of_commande[0] = 0; /* La première commande débute forcément à la position 0 */
     
@@ -117,6 +125,7 @@ int my_pipe(int nb_pipes) {
     for(i = 0; i < nb_pipes + 1; i++){
         waitpid(pid, &status, 0); /* attente bloquante */
     }
+    return 0;
 }
 
 

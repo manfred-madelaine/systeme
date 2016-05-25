@@ -14,6 +14,7 @@
 #include "my_cat.h"
 #include "my_copy.h"
 #include "my_find.h"
+#include "my_pipe.h"
 
 
 /* Fonction: invite_commande
@@ -102,8 +103,6 @@ void lire_commande()
 	if (strchr(ligne,'\n'))
 		*strchr(ligne,'\n') = 0;
 
-	stockCommande();
-
 	parse(); /* on remplit la chaine commande et le tableau d'arguments */
 }
 
@@ -184,22 +183,22 @@ char* get_path(char* cmd_name) {
  */
 int internal_command(int pos) {
 	if( strcmp(commande[pos], "exit") == 0)
-	    {my_exit(commande); return 1;}
+	    {stockCommande(); my_exit(commande); return 1;}
 	    
 	else if(strcmp(commande[pos], "cd") == 0)
-	    {chdir(commande[pos+1]); return 1;}
+	    {stockCommande(); chdir(commande[pos+1]); return 1;}
 	    
 	else if(strcmp(commande[pos], "cat") == 0)
-	    {my_cat(commande[pos+1], commande[pos+2]); return 1;}
+	    {stockCommande(); my_cat(commande[pos+1], commande[pos+2]); return 1;}
 	    
 	else if(strcmp(commande[pos], "history") == 0)
-	    {my_history(); return 1;}
+	    {stockCommande(); my_history(); return 1;}
 	    
-	else if(strcmp(commande[pos], "copy") == 0)
-	    {my_copy(commande[pos+1], commande[pos+2]); return 1;}  
+	else if(strcmp(commande[pos], "cp") == 0)
+	    {stockCommande(); my_copy(commande[pos+1], commande[pos+2]); return 1;}  
 	    
 	else if(strcmp(commande[pos], "find") == 0)
-		{my_find(0); return 1;}
+		{stockCommande(); my_find(0); return 1;}
 	    
 	else return 0;
 }
@@ -220,12 +219,13 @@ void executer_commande() {
 	
 	/* on commence par regarder s'il y a des pipes */
 	int nb_pipes = number_pipes();
-	if (nb_pipes > 0)
+	if (nb_pipes > 0) {
 		my_pipe(nb_pipes);
+	}
 	
 	/* on exécute les commandes internes (pas de fork) */
 	/* pas de pipes, donc la position de la commande est 0 */
-	else if ( internal_command(0) == 0 )
+	else if (internal_command(0) == 0)
 	{	
 		pid = fork(); /* le fork permet de lancer une commande en continuant d'executer le shell */
 		if (pid == 0) /* fils */
@@ -259,6 +259,7 @@ void executer_commande() {
 			/* on exécute ensuite les commandes externes */
 			const char* path = get_path(commande[0]); /* on récupère le chemin */
 			if (strcmp(path, "echec") != 0) { /* si on réussit à récupérer le path */
+				stockCommande();
 				execv(path, commande);
 			}
 			else

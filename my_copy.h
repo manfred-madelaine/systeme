@@ -7,43 +7,52 @@
 #ifndef _MY_COPY_
 #define _MY_COPY_
 
-//#include "my_shell.h"
 
-/*
+/* Fonction: copie_n
+ * Entrees: 2 chaines de caractère : le fichier source et le cible
+ * 
+ * Sortie: -1 si la copie n'a pas fonctionné, 0 sinon
+ * 
  * Copie un fichier en conservant les mêmes stats de fichiers
- * Retourne -1 si la copie n'a pas fonctionné
  */
 int copie_n(char* source, char* cible);
 
-/*
- * Concatène deux chaines de caractères
- * retourne la concatenation 
+/* Fonction concatener
+ * Entrées: une chaine de caractère finale res, et deux autres chaines rep et fichier
+ * 
+ * Sortie: aucune 
+ * Concatène rep et fichier dans res
  */
 void concatener(char** res, char rep[], char fichier[]);
 
-/*
- * Copie le statut du fichier src dans le fichier dest
- * retourne 0 si l'opération se passe bien, -1 sinon
+/* Fonction changer_stat
+ * Entrées: le nom du répertoire source et du fichier cible
+ * 
+ * Sortie: 0 si l'opération s'est bien déroulé, -1 sinon
+ * Copie le statut du rep source dans celui du rep cible
  */
 int changer_stat(char* src, char* dest);
 
-/*
- * Copie un répertoire, en utilisant la récursivité si le dossier contient un dossier
- * retourne -1 si l'opération se passe mal
+/* Fonction: copie_dir
+ * Entrées: le nom du répertoire source et du fichier cible
+ * 
+ * Sortie: -1 s'il y a eu une erreur, 0 sinon
+ * Copie un répertoire
  */
 int copie_dir(char source[], char destination[]);
 
-/*
- * Prend en entrée un fchier ou un repertoire
- * Retourne 1 c'est un répertoire, 0 sinon
+/* Fonction is_directory
+ * Entrées: le nom du fichier source
+ * 
+ * Sortie: 0 si le fichier n'est pas un répertoire, 1 sinon
  */
 int is_directory(char source[]);
 
-/*
- * Copie un fichier/répertoire src dans la destination dest
- * Appel la fonction copy_dir() pour un répertoire
- * ou copy_n() pour un fichier
- */
+/* Fonction my_copy
+ * Entrées: le nom du fichier source et du fichier cible
+ * 
+ * Sortie: aucune
+ * Effectue une copie, que ce soit un répertoire ou un fichier courant */
 void my_copy(char* src, char* dest);
 
 #endif

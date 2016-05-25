@@ -12,20 +12,13 @@
 int main(){
 
 	char nomRepertoire[MAX_CHAR_REP];
-	char nomUtilisateur[MAX_CHAR_UTI];
-	char nomMachine[MAX_CHAR_MACHINE];
-/*
-	if(getlogin_r(nomUtilisateur, MAX_CHAR_UTI*sizeof(char)) || gethostname(nomMachine, MAX_CHAR_MACHINE*sizeof(char)) == -1)
-		return EXIT_FAILURE;
-
-	*strchr(nomMachine, '.') = '\0';*/
 
 	int i;
 	while(1)
 	{
 		i = 0;
 
-		invite_commande(nomRepertoire, nomMachine, nomUtilisateur);
+		invite_commande(nomRepertoire);
 		lire_commande();
 		executer_commande();
 

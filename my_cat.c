@@ -78,7 +78,6 @@ void my_cat(char* fichier1, char* fichier2)
 	{
 		// déclaration du fichier
 		FILE* f1 = NULL;
-	
 		// ouverture du fichier en mode lecture seule
 		f1 = fopen(fichier1, "r");
 		
@@ -109,8 +108,8 @@ void my_cat(char* fichier1, char* fichier2)
 					
 					fclose(f2);
 				}	
+			fclose(f1);
 		}
-		fclose(f1);
 	}
 }
 

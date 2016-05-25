@@ -7,11 +7,14 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h> 
 
 #include "my_shell.h"
 #include "my_history.h"
 #include "my_cat.h"
 #include "my_copy.h"
+#include "my_find.h"
+
 
 /* Fonction: invite_commande
  * Entrees: aucune
@@ -20,10 +23,10 @@
  *
  * affiche l'invité de commande
  */
-void invite_commande(char* nomRepertoire, char* nomMachine, char* nomUtilisateur)
+void invite_commande(char* nomRepertoire)
 {
 	if(getcwd(nomRepertoire, MAX_CHAR_REP*sizeof(char)))
-			printf("%s@%s:%s> ", nomUtilisateur, nomMachine, nomRepertoire);
+			printf("Minishell:%s> ", nomRepertoire);
 
 	fflush(stdout); /* vide le buffer */
 }
@@ -124,7 +127,7 @@ void my_exit(char** buffermult)
  */
 char* get_path(char* cmd_name) {
 
-	/*ajout d'un / à la commande*/
+	/* ajout d'un "/" à la commande */
 	char command_name[40];
 	strcpy(command_name, "/");
 	strcat(command_name, cmd_name);
@@ -139,23 +142,23 @@ char* get_path(char* cmd_name) {
 	/* strtok permet de parser le chemin de la commande suivant un délimiteur*/
 	paths[i] = strtok(cmd_path, ":"); /* 1er appel en dehors de la boucle*/
 
-	/* on free et on réalloue de la place pour temp à chaque boucle*/
+	/* on free et on réalloue de la place pour temp à chaque boucle */
 	temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
-	strcpy(temp, paths[i]); /* copie du chemin dans temp*/
-	strcat(temp, command_name); /* concaténation des deux chaînes*/
+	strcpy(temp, paths[i]); /* copie du chemin dans temp */
+	strcat(temp, command_name); /* concaténation des deux chaînes */
 
 	while(1){
 		free(temp);
 		i++;
 		paths[i] = strtok(NULL, ":");
 		if (paths[i] == NULL){
-		/* si on arrive à la fin, il faut sortir du while*/
+		/* si on arrive à la fin, il faut sortir du while */
 			printf("Erreur, commande introuvable.\n");
 			break_ = 1;
 			break;
 		}
 
-		/* même chose qu'avant la boucle*/
+		/* même chose qu'avant la boucle */
 		temp = malloc(strlen(paths[i]) + strlen(command_name)+ 1);
 		strcpy(temp, paths[i]);
 		strcat(temp, command_name);
@@ -171,6 +174,39 @@ char* get_path(char* cmd_name) {
 }
 
 
+/* Fonction: internal_command
+ * Entrees: un entier représentant la position de la commande
+ * a effectuer dans le tableau commande[]
+ * 
+ * Sortie: aucune
+ * 
+ * Execute une commande externe
+ */
+int internal_command(int pos) {
+	if( strcmp(commande[pos], "exit") == 0)
+	    {my_exit(commande); return 1;}
+	    
+	else if(strcmp(commande[pos], "cd") == 0)
+	    {chdir(commande[pos+1]); return 1;}
+	    
+	else if(strcmp(commande[pos], "cat") == 0)
+	    {my_cat(commande[pos+1], commande[pos+2]); return 1;}
+	    
+	else if(strcmp(commande[pos], "history") == 0)
+	    {my_history(); return 1;}
+	    
+	else if(strcmp(commande[pos], "copy") == 0)
+	    {my_copy(commande[pos+1], commande[pos+2]); return 1;}  
+	    
+	else if(strcmp(commande[pos], "find") == 0)
+		{my_find(0); return 1;}
+	    
+	else return 0;
+}
+
+
+
+
 /* Fonction: executer_commande
  * Entrees: aucune
  *
@@ -178,59 +214,51 @@ char* get_path(char* cmd_name) {
  *
  * Execute une commande
  */
-void executer_commande()
-{
+void executer_commande() {
+	
 	pid_t pid;
 	
-	/* on exécute les commandes internes (pas de fork)*/
-	if( strcmp(commande[0], "exit") == 0)
-	    {my_exit(commande);}
-	    
-	else if(strcmp(commande[0], "cd") == 0)
-	    {chdir(commande[1]);}
-	    
-	else if(strcmp(commande[0], "cat") == 0)
-	    {my_cat(commande[1], commande[2]);}
-	    
-	else if(strcmp(commande[0], "history") == 0)
-	    {my_history();}
-	    
-	else if(strcmp(commande[0], "copy") == 0)
-	    {my_copy(commande[1], commande[2]);}   
-	    
-	else
-	{
-		pid = fork(); /* le fork permet de lancer une commande en continuant d'executer le shell*/
-		if (pid == 0) /* fils*/
+	/* on commence par regarder s'il y a des pipes */
+	int nb_pipes = number_pipes();
+	if (nb_pipes > 0)
+		my_pipe(nb_pipes);
+	
+	/* on exécute les commandes internes (pas de fork) */
+	/* pas de pipes, donc la position de la commande est 0 */
+	else if ( internal_command(0) == 0 )
+	{	
+		pid = fork(); /* le fork permet de lancer une commande en continuant d'executer le shell */
+		if (pid == 0) /* fils */
 		{
-			/*on commence par vérifier si on veut faire une redirection*/
-			int i = 0; /* recherche du nombre d'éléments*/
+			
+			/* on commence par vérifier si on veut faire une redirection */
+			int i = 0; /* recherche du nombre d'éléments */
 			while (commande[i] != NULL)
 				i++; 
 		
 			if (commande[i-1][0] == '>') {
-				/* ouverture d'un fichier de destination*/
+				/* ouverture d'un fichier de destination */
 				int file = open(&commande[i-1][1], O_WRONLY | O_CREAT | O_TRUNC, 0666);
 						/* O_WRONLY : on va seulement écrire dans le fichier
 						 * O_CREAT : créé le fichier s'il n'existe pas
 						 * O_TRUNC : le fichier est tronqué à une longueur nulle s'il existe
-						 * 0666 : tout le monde peut lire et écrire dans ce fichier*/
+						 * 0666 : tout le monde peut lire et écrire dans ce fichier */
 				
 				if (file == -1) {
 					printf("Erreur, impossible de créer le fichier");
 					exit(1);
 				}
 			
-				dup2(file, 1); /*remplace la sortie standard par un fichier de sortie*/
-				close(file);
+				dup2(file, 1); /* remplace la sortie standard par un fichier de sortie */
+				close(file); /* fermeture du fichier de destination */
 				
-				/*il faut supprimer le dernier argument pour effectuer la commande externe*/
+				/* il faut supprimer le dernier argument pour effectuer la commande externe */
 				commande[i-1] = NULL;
 			}
 			
-			/*on exécute ensuite les commandes externes*/
-			const char* path = get_path(commande[0]); /*on récupère le chemin*/
-			if (strcmp(path, "echec") != 0) { /* si on réussit à récupérer le path*/
+			/* on exécute ensuite les commandes externes */
+			const char* path = get_path(commande[0]); /* on récupère le chemin */
+			if (strcmp(path, "echec") != 0) { /* si on réussit à récupérer le path */
 				execv(path, commande);
 			}
 			else
@@ -239,11 +267,11 @@ void executer_commande()
 		}
 		else if(pid<0)
 			printf("Erreur, fork a échoué.\n");
-		else /* père*/
+		else /* père */
 		{
 			int status;
-			waitpid(pid, &status, 0); /* attente bloquante*/
+			waitpid(pid, &status, 0); /* attente bloquante */
 		}
 	}
+	
 }
-

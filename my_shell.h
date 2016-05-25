@@ -12,10 +12,10 @@
 #define MAX_SIZE_COMMANDE 1000
 #define NB_MAX_ARGUMENTS 20
 #define MAX_CHAR_REP 200
-#define MAX_CHAR_UTI 100
 #define MAX_CHAR_MACHINE 100
 #define MAX_TAILLE_ARGUMENTS 100
 #define MAX_LIGNES_COMMANDE 50
+#define MAX_PATH 500
 
 
 char ligne[MAX_SIZE_COMMANDE]; /* contiendra la commande à exécuter*/
@@ -30,7 +30,7 @@ char* commande[NB_MAX_ARGUMENTS + 1];
  *
  * affiche l'invité de commande
  */
-void invite_commande(char* nomRepertoire, char* nomMachine, char* nomUtilisateur);
+void invite_commande(char* nomRepertoire);
 
 /* Fonction: parse
  * Entrees: aucune
@@ -60,6 +60,15 @@ void lire_commande();
  */
 void my_exit(char** buffermult);
 
+/* Fonction: internal_command
+ * Entrees: un entier représentant la position de la commande
+ * a effectuer dans le tableau commande[]
+ * 
+ * Sortie: aucune
+ * 
+ * Execute une commande externe
+ */
+int internal_command(int pos);
 
 /* Fonction: executer_commande
  * Entrees: aucune
